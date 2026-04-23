@@ -14,4 +14,4 @@
 .vscode/
 *.md.backup
 Dockerfile
-.dockerignore
+.dockerignorecards.db
