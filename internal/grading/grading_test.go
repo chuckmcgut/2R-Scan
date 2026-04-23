@@ -1,6 +1,7 @@
 package grading
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -33,6 +34,10 @@ func TestGradeImage_Basic(t *testing.T) {
 	addCard(img, 15, 15, 270, 390, color.RGBA{240, 235, 230, 255})
 
 	result := GradeImage(img)
+	fmt.Printf("DEBUG: Overall=%.2f Conf=%.2f C=%.2f Co=%.2f E=%.2f S=%.2f\n",
+		result.Overall, result.Confidence,
+		result.Breakdown.Centering, result.Breakdown.Corners,
+		result.Breakdown.Edges, result.Breakdown.Surface)
 
 	if result.Overall < 7.0 {
 		t.Errorf("pristine card Overall=%.1f, want >= 7.0", result.Overall)
@@ -149,6 +154,7 @@ func TestOverallWeightedAverage(t *testing.T) {
 		result.Breakdown.Corners*0.20 +
 		result.Breakdown.Edges*0.25 +
 		result.Breakdown.Surface*0.35) * 10
+	expected = math.Round(expected*10) / 10
 
 	if math.Abs(result.Overall-expected) > 0.02 {
 		t.Errorf("Overall=%.2f, want weighted sum %.2f", result.Overall, expected)

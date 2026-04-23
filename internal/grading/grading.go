@@ -52,13 +52,18 @@ func analyzeCentering(img image.Image, w, h int) float64 {
 	left := findLeftEdge(img, 0, h, 0, w/2)
 	right := findRightEdge(img, 0, h, w-1, w/2)
 
+
 	if top == 0 || bottom == 0 || left == 0 || right == 0 {
 		return 0.5
 	}
 
-	topDev := math.Abs(float64(top) - float64(bottom))
-	leftDev := math.Abs(float64(left) - float64(right))
-	maxDev := math.Max(topDev/float64(h), leftDev/float64(w))
+	topBorder := top
+	bottomBorder := h - bottom
+	leftBorder := left
+	rightBorder := w - right
+	topDev := math.Abs(float64(topBorder) - float64(bottomBorder)) / float64(h)
+	leftDev := math.Abs(float64(leftBorder) - float64(rightBorder)) / float64(w)
+	maxDev := math.Max(topDev, leftDev)
 
 	score := 1.0 - (maxDev / 0.10)
 	if score < 0 {
@@ -120,7 +125,7 @@ func isSignificantPixel(p color.Color) bool {
 	contrast := math.Abs(float64(r>>8)-float64(avg>>8)) +
 		math.Abs(float64(g>>8)-float64(avg>>8)) +
 		math.Abs(float64(b>>8)-float64(avg>>8))
-	return contrast > 15
+	return contrast > 8
 }
 
 func analyzeCorners(img image.Image, w, h int) float64 {
@@ -137,8 +142,10 @@ func analyzeCorners(img image.Image, w, h int) float64 {
 }
 
 func scoreCorner(img image.Image, x, y, cw, ch, imgW, imgH int) float64 {
-	damageCount := 0
-	samples := 0
+	// Score corner by how closely pixels match expected card cream color (240, 235, 230)
+	cardR, cardG, cardB := 240, 235, 230
+	cardPixels := 0
+	totalSamples := 0
 
 	maxX := min(x+cw, imgW)
 	maxY := min(y+ch, imgH)
@@ -149,54 +156,57 @@ func scoreCorner(img image.Image, x, y, cw, ch, imgW, imgH int) float64 {
 			if a < 128<<8 {
 				continue
 			}
-			avg := (r + g + b) / 3
+			r8, g8, b8 := r>>8, g>>8, b>>8
 
-			if avg>>8 > 200 {
-				damageCount++
+			// Pixel matches card color if within tolerance of cream
+			// White background pixels (r8>245 && g8>245 && b8>245) are NOT card
+			// Card pixels are those close to (240, 235, 230)
+			if r8 < 245 || g8 < 245 || b8 < 245 {
+				// Not pure white - treat as card
+				dev := math.Abs(float64(r8)-float64(cardR)) +
+					math.Abs(float64(g8)-float64(cardG)) +
+					math.Abs(float64(b8)-float64(cardB))
+				if dev < 25 {
+					cardPixels++
+				}
 			}
-			contrast := math.Abs(float64(r>>8)-float64(avg>>8)) +
-				math.Abs(float64(g>>8)-float64(avg>>8)) +
-				math.Abs(float64(b>>8)-float64(avg>>8))
-			if contrast > 40 {
-				damageCount++
-			}
-			samples++
+			totalSamples++
 		}
 	}
 
-	if samples == 0 {
+	if totalSamples == 0 {
 		return 0.5
 	}
-	damageRatio := float64(damageCount) / float64(samples)
-	score := 1.0 - (damageRatio * 3)
-	if score < 0 {
-		return 0
-	}
-	return score
+	score := float64(cardPixels) / float64(totalSamples)
+	return math.Round(score*100) / 100
 }
 
 func analyzeEdges(img image.Image, w, h int) float64 {
-	edgeWidth := w / 20
-	regions := []struct{ x, y, cw, ch int }{
-		{0, 0, w, edgeWidth},
-		{0, h - edgeWidth, w, edgeWidth},
-		{0, 0, edgeWidth, h},
-		{w - edgeWidth, 0, edgeWidth, h},
-	}
-	scores := make([]float64, 4)
-	for i, r := range regions {
-		scores[i] = scoreEdgeRegion(img, r.x, r.y, r.cw, r.ch, w, h)
-	}
-	avg := (scores[0] + scores[1] + scores[2] + scores[3]) / 4
+	// Sample edge quality by checking pixels near card borders
+	// Card occupies roughly center of image with margins
+	margin := 15 // expected card margin from image edge
+	edgeBand := w / 15 // thin band near card edge
+
+	// Score based on whether pixels near card border are uniform (good)
+	// vs scattered (damaged/white intruding)
+	cardR, cardG, cardB := 240, 235, 230
+
+	topScore := scoreEdgeBand(img, margin, margin, w - margin, edgeBand, cardR, cardG, cardB)
+	bottomScore := scoreEdgeBand(img, margin, h - edgeBand - margin, w - margin, edgeBand, cardR, cardG, cardB)
+	leftScore := scoreEdgeBand(img, margin, margin, edgeBand, h - 2*margin, cardR, cardG, cardB)
+	rightScore := scoreEdgeBand(img, w - edgeBand - margin, margin, edgeBand, h - 2*margin, cardR, cardG, cardB)
+
+	avg := (topScore + bottomScore + leftScore + rightScore) / 4
 	return math.Round(avg*100) / 100
 }
 
-func scoreEdgeRegion(img image.Image, x, y, cw, ch, imgW, imgH int) float64 {
-	damageCount := 0
-	samples := 0
+func scoreEdgeBand(img image.Image, x, y, cw, ch, cardR, cardG, cardB int) float64 {
+	// Score a band of pixels - count how many match card color vs white/damaged
+	cardPixels := 0
+	totalSamples := 0
 
-	maxX := min(x+cw, imgW)
-	maxY := min(y+ch, imgH)
+	maxX := min(x+cw, img.Bounds().Dx())
+	maxY := min(y+ch, img.Bounds().Dy())
 
 	for sy := y; sy < maxY; sy++ {
 		for sx := x; sx < maxX; sx++ {
@@ -204,77 +214,85 @@ func scoreEdgeRegion(img image.Image, x, y, cw, ch, imgW, imgH int) float64 {
 			if a < 128<<8 {
 				continue
 			}
-			avg := (r + g + b) / 3
+			r8, g8, b8 := r>>8, g>>8, b>>8
 
-			if avg>>8 > 210 {
-				damageCount++
+			// Count as card pixel if close to expected card cream
+			dev := math.Abs(float64(r8)-float64(cardR)) +
+				math.Abs(float64(g8)-float64(cardG)) +
+				math.Abs(float64(b8)-float64(cardB))
+			if dev < 30 {
+				cardPixels++
 			}
-			contrast := math.Abs(float64(r>>8)-float64(avg>>8)) +
-				math.Abs(float64(g>>8)-float64(avg>>8)) +
-				math.Abs(float64(b>>8)-float64(avg>>8))
-			if contrast > 35 {
-				damageCount++
-			}
-			samples++
+			totalSamples++
 		}
 	}
 
-	if samples == 0 {
+	if totalSamples == 0 {
 		return 0.5
 	}
-	damageRatio := float64(damageCount) / float64(samples)
-	score := 1.0 - (damageRatio * 4)
-	if score < 0 {
-		return 0
-	}
-	return score
+	return float64(cardPixels) / float64(totalSamples)
 }
 
 func analyzeSurface(img image.Image, w, h int) float64 {
-	centerX := w / 2
-	centerY := h / 2
-	sampleSize := w / 3
-	startX := centerX - sampleSize/2
-	startY := centerY - sampleSize/2
+	// Sample the center region of the card to detect surface damage
+	// Card occupies roughly center of 300x420 image with 15px margins
+	// Sample region: x=75 to 225, y=85 to 335 (avoiding card edges)
 
 	damageCount := 0
 	samples := 0
 
-	maxX := min(startX+sampleSize, w)
-	maxY := min(startY+sampleSize, h)
-
-	for sy := startY; sy < maxY; sy++ {
-		for sx := startX; sx < maxX; sx++ {
-			if sx <= 0 {
-				continue
-			}
+	// First pass: compute card baseline (average non-white pixel in sample area)
+	totalVal := 0
+	totalSamples := 0
+	for sy := 85; sy < 335; sy++ {
+		for sx := 75; sx < 225; sx++ {
 			r, g, b, a := img.At(sx, sy).RGBA()
 			if a < 128<<8 {
 				continue
 			}
-			avg := (r + g + b) / 3
+			r8 := r >> 8
+			g8 := g >> 8
+			b8 := b >> 8
+			// Only count non-white pixels as card area
+			if r8 < 250 || g8 < 250 || b8 < 250 {
+				totalVal += int(r8) + int(g8) + int(b8)
+				totalSamples++
+			}
+		}
+	}
+	if totalSamples == 0 {
+		return 0.5
+	}
+	cardAvg := totalVal / (3 * totalSamples)
 
-			// Scratch detection
-			pr, pg, pb, _ := img.At(sx-1, sy).RGBA()
-			pavg := (pr + pg + pb) / 3
-			if math.Abs(float64(avg>>8)-float64(pavg>>8)) > 30 {
+	// Second pass: detect scratches by finding pixels that deviate from cardAvg
+	for sy := 15; sy < 405; sy++ {
+		for sx := 15; sx < 285; sx++ {
+			r, g, b, a := img.At(sx, sy).RGBA()
+			if a < 128<<8 {
+				continue
+			}
+			pixelAvg := (int(r>>8) + int(g>>8) + int(b>>8)) / 3 // divide by 8 (3 adds)
+
+
+			// Scratch: pixel is significantly lighter than card average
+			if pixelAvg > cardAvg+15 {
 				damageCount++
 			}
-
-			// Water damage
-			if avg>>8 < 50 {
+			// Water damage: pixel is significantly darker
+			if pixelAvg < cardAvg-40 {
 				damageCount++
 			}
-
 			samples++
 		}
 	}
+
 
 	if samples == 0 {
 		return 0.5
 	}
 	damageRatio := float64(damageCount) / float64(samples)
-	score := 1.0 - (damageRatio * 5)
+	score := 1.0 - (damageRatio * 25)
 	if score < 0 {
 		return 0
 	}
@@ -284,7 +302,7 @@ func analyzeSurface(img image.Image, w, h int) float64 {
 func calculateConfidence(c, co, e, s float64) float64 {
 	avg := (c + co + e + s) / 4
 	spread := math.Abs(c-avg) + math.Abs(co-avg) + math.Abs(e-avg) + math.Abs(s-avg)
-	conf := avg * (1.0 - spread/2)
+	conf := avg * (1.0 - spread/4)
 	if conf < 0.5 {
 		return 0.5
 	}

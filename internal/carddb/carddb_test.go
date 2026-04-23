@@ -104,35 +104,34 @@ func TestFindByName(t *testing.T) {
 }
 
 func TestFindExact(t *testing.T) {
-	tmp := t.TempDir() + "/test_exact.db"
-	db, err := New(tmp)
+	// Uses a fresh temp dir to avoid any cross-test pollution
+	db, err := New(t.TempDir() + "/test_exact.db")
 	if err != nil {
 		t.Fatalf("New() = %v", err)
 	}
-
-	card := &Card{Name: "Aladdin's Flying Carpet", SetCode: "tle", CardNumber: "180", InkType: "Amber", TypeLine: "Item", Rarity: "Rare"}
-	db.upsertCard(card)
-
-	found, err := db.FindExact("tle", "180")
+	c := &Card{Name: "Test Card", SetCode: "abc", CardNumber: "1", InkType: "Amber", TypeLine: "Item", Rarity: "Common"}
+	if _, err := db.upsertCard(c); err != nil {
+		t.Fatalf("upsertCard() = %v", err)
+	}
+	found, err := db.FindExact("abc", "1")
 	if err != nil {
 		t.Fatalf("FindExact() = %v", err)
 	}
 	if found == nil {
-		t.Fatal("FindExact(tle, 180) = nil, want card")
+		t.Fatal("FindExact(abc, 1) = nil")
 	}
-	if found.Name != card.Name {
-		t.Errorf("found.Name = %q, want %q", found.Name, card.Name)
+	if found.Name != c.Name {
+		t.Errorf("found.Name = %q, want %q", found.Name, c.Name)
 	}
-
-	notFound, err := db.FindExact("tle", "999")
+	// Non-existent card should return nil, no error
+	missing, err := db.FindExact("xyz", "999")
 	if err != nil {
-		t.Fatalf("FindExact() unexpected error = %v", err)
+		t.Fatalf("FindExact(xyz, 999) error = %v", err)
 	}
-	if notFound != nil {
-		t.Errorf("FindExact(tle, 999) = %v, want nil", notFound)
+	if missing != nil {
+		t.Errorf("FindExact(xyz, 999) = %v, want nil", missing)
 	}
 }
-
 func TestListAll(t *testing.T) {
 	tmp := t.TempDir() + "/test_list.db"
 	db, err := New(tmp)

@@ -181,6 +181,9 @@ func (d *DB) FindExact(setCode, cardNumber string) (*Card, error) {
 	var fullArt, altArt, signed, firstEdit int
 	err := row.Scan(&c.ID, &c.Name, &c.SetCode, &c.SetName, &c.InkType, &c.TypeLine,
 		&c.Rarity, &c.CardNumber, &fullArt, &altArt, &signed, &firstEdit, &c.ImageURL)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

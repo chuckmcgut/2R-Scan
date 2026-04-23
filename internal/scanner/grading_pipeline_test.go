@@ -1,7 +1,6 @@
-package tests
+package scanner
 
 import (
-	"image"
 	"image/color"
 	"image/png"
 	"os"
@@ -15,7 +14,7 @@ func TestAnalyzeCardImage_WithRealGrading(t *testing.T) {
 	img := blankImage(w, h, color.RGBA{255, 255, 255, 255})
 	addCard(img, 15, 15, 270, 390, color.RGBA{240, 235, 230, 255})
 
-	result := ProcessImage(&img)
+	result := ProcessImage(img)
 
 	// All sub-scores must be valid 1-10
 	for name, score := range map[string]int{"C": result.C, "Co": result.Co, "E": result.E, "S": result.S} {
@@ -36,7 +35,7 @@ func TestAnalyzeCardImage_LowQualityImage(t *testing.T) {
 	img := blankImage(w, h, color.RGBA{255, 255, 255, 255})
 	addCard(img, 10, 10, 180, 260, color.RGBA{240, 235, 230, 255})
 
-	result := ProcessImage(&img)
+	result := ProcessImage(img)
 	if result.Grade < 0 || result.Grade > 10 {
 		t.Errorf("small image Grade=%.1f out of range", result.Grade)
 	}
@@ -71,7 +70,7 @@ func TestPNGRoundtrip(t *testing.T) {
 	}
 	f2.Close()
 
-	result := ProcessImage(&reloaded)
+	result := ProcessImage(reloaded)
 	if result.Grade < 0 || result.Grade > 10 {
 		t.Errorf("reloaded image Overall=%.1f, want >= 0.0", result.Grade)
 	}
