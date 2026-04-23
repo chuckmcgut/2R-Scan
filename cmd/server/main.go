@@ -76,7 +76,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("opening card db: %v", err)
 	}
-	defer db.Close()
 
 	cardCount, _ := db.Count()
 	log.Printf("Card DB loaded: %d cards", cardCount)

@@ -1,6 +1,8 @@
 package scanner
 
 import (
+	"image"
+
 	"math"
 
 	"github.com/chuckmcgut/2R-Scan/internal/api"
@@ -9,8 +11,8 @@ import (
 
 // ProcessImage analyzes the card image and returns the grading result.
 // Wires grading.GradeImage (real heuristics) into the API response.
-func ProcessImage(img *image.Image) api.ScanResult {
-	grade := grading.GradeImage(*img)
+func ProcessImage(img image.Image) api.ScanResult {
+	grade := grading.GradeImage(img)
 
 	// Map float breakdown (0.0-1.0) to int sub-scores (1-10)
 	c := clampInt(int(math.Round(grade.Breakdown.Centering*10)), 1, 10)

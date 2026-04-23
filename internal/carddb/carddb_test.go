@@ -11,7 +11,6 @@ func TestNewDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() = %v, want nil", err)
 	}
-	defer db.Close()
 
 	count, err := db.Count()
 	if err != nil {
@@ -28,7 +27,6 @@ func TestUpsertAndFind(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() = %v", err)
 	}
-	defer db.Close()
 
 	card := &Card{
 		Name:       "Mickey Mouse",
@@ -70,7 +68,6 @@ func TestFindByName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() = %v", err)
 	}
-	defer db.Close()
 
 	cards := []*Card{
 		{Name: "Mickey Mouse", SetCode: "tle", CardNumber: "1", InkType: "Amber", TypeLine: "Character", Rarity: "Rare"},
@@ -112,7 +109,6 @@ func TestFindExact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() = %v", err)
 	}
-	defer db.Close()
 
 	card := &Card{Name: "Aladdin's Flying Carpet", SetCode: "tle", CardNumber: "180", InkType: "Amber", TypeLine: "Item", Rarity: "Rare"}
 	db.upsertCard(card)
@@ -143,7 +139,6 @@ func TestListAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() = %v", err)
 	}
-	defer db.Close()
 
 	for i := 0; i < 5; i++ {
 		db.upsertCard(&Card{Name: "Test Card", SetCode: "set", CardNumber: string(rune('0'+i)), InkType: "Amber", TypeLine: "Item", Rarity: "Common"})
@@ -209,11 +204,10 @@ func TestDBPathCreate(t *testing.T) {
 		t.Skip("db already exists")
 	}
 
-	db, err := New(dbPath)
+	_, err := New(dbPath)
 	if err != nil {
 		t.Fatalf("New(%s) = %v, want nil", dbPath, err)
 	}
-	defer db.Close()
 
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Errorf("expected db file at %s", dbPath)

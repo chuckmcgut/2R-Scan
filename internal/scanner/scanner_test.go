@@ -3,7 +3,6 @@ package scanner
 import (
 	"image"
 	"image/color"
-	"image/png"
 	"testing"
 )
 
@@ -33,7 +32,7 @@ func TestProcessImage_Basic(t *testing.T) {
 	img := blankImage(w, h, color.RGBA{255, 255, 255, 255})
 	addCard(img, 15, 15, 270, 390, color.RGBA{240, 235, 230, 255})
 
-	result := ProcessImage(&img)
+	result := ProcessImage(img)
 
 	// C, Co, E, S must all be in [1, 10]
 	for _, score := range []int{result.C, result.Co, result.E, result.S} {
@@ -63,8 +62,8 @@ func TestProcessImage_Damaged(t *testing.T) {
 		damaged.Set(x, 200, color.RGBA{200, 200, 200, 255})
 	}
 
-	pristineResult := ProcessImage(&pristine)
-	damagedResult := ProcessImage(&damaged)
+	pristineResult := ProcessImage(pristine)
+	damagedResult := ProcessImage(damaged)
 
 	if damagedResult.Grade >= pristineResult.Grade {
 		t.Errorf("damaged card grade (%.1f) should be < pristine (%.1f)",
@@ -78,7 +77,7 @@ func TestProcessImage_Roundtrip(t *testing.T) {
 	img := blankImage(300, 420, color.RGBA{255, 255, 255, 255})
 	addCard(img, 15, 15, 270, 390, color.RGBA{240, 235, 230, 255})
 
-	result := ProcessImage(&img)
+	result := ProcessImage(img)
 	if result.Grade < 5.0 {
 		t.Errorf("reloaded image Overall=%.1f, want >= 5.0", result.Grade)
 	}

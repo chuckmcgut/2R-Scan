@@ -101,7 +101,7 @@ func (d *DB) IngestFromScryfall() (*IngestResult, error) {
 		}
 
 		for _, c := range cards {
-			added, err := d.upsertCard(c)
+			added, err := d.upsertCard(&c)
 			if err != nil {
 				return nil, fmt.Errorf("upserting card %s: %w", c.Name, err)
 			}
@@ -354,7 +354,7 @@ func inferInkType(typeLine string) string {
 	inkWords := []string{"AMBER", "AMETHYST", "EMERALD", "RUBY", "SAPPHIRE", "STEEL"}
 	for _, ink := range inkWords {
 		if strings.Contains(upper, ink) {
-			return ink
+			return strings.Title(strings.ToLower(ink))
 		}
 	}
 	return "Unknown"

@@ -60,7 +60,6 @@ type RequestLogger struct{}
 
 func (rl RequestLogger) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
 		w.Header().Set("X-Request-Id", generateID())
 
 		next.ServeHTTP(w, r)
@@ -77,7 +76,7 @@ func generateRandomString(n int) string {
 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = chars[byte(rand())%len(chars)]
+		b[i] = chars[int(rand())%len(chars)]
 	}
 	return string(b)
 }

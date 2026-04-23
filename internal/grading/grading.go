@@ -47,9 +47,9 @@ func GradeImage(img image.Image) GradeResult {
 }
 
 func analyzeCentering(img image.Image, w, h int) float64 {
-	top := findTopEdge(img, 0, w, 0, h/2, true)
+	top := findTopEdge(img, 0, w, 0, h/2)
 	bottom := findBottomEdge(img, 0, w, h-1, h/2)
-	left := findLeftEdge(img, 0, h, 0, w/2, true)
+	left := findLeftEdge(img, 0, h, 0, w/2)
 	right := findRightEdge(img, 0, h, w-1, w/2)
 
 	if top == 0 || bottom == 0 || left == 0 || right == 0 {
@@ -231,7 +231,6 @@ func scoreEdgeRegion(img image.Image, x, y, cw, ch, imgW, imgH int) float64 {
 }
 
 func analyzeSurface(img image.Image, w, h int) float64 {
-	margin := w / 8
 	centerX := w / 2
 	centerY := h / 2
 	sampleSize := w / 3
