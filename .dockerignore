@@ -2,5 +2,13 @@
 *.md
 tests/
 scripts/
-*.sum
-*.mod
+data/
+.DS_Store
+.env
+.env.example
+go.work
+docker-compose.yml
+.gitignore
+cmd/server/main_test.go
+internal/api/
+cmd/server/handlers_test.go
