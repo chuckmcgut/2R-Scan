@@ -1,0 +1,6 @@
+.git
+*.md
+tests/
+scripts/
+*.sum
+*.mod

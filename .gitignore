@@ -1,0 +1,17 @@
+.git/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+*.log
+*.tmp
+*.bak
+*.swp
+.idea/
+.vscode/
+*.md.backup
+Dockerfile
+.dockerignore
